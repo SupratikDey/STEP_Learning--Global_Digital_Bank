@@ -1,59 +1,63 @@
+import com.gdb.domain.*;
+
 public class TestAccount {
-    public static void main(String [] args){
-        Account account1 = new Account(101,"Rahul",21,5000,"Savings");
-        Account account2 = new Account(102,"Priya",22,10000,"Current");
+    public static void main(String[] args) {
+        System.out.println("==================================================");
+        System.out.println("GLOBAL DIGITAL BANK - ACCOUNT TEST");
+        System.out.println("==================================================");
 
-        // TEST DEPOSIT
-        System.out.println("\nDEPOSIT TESTS");
+        try {
+            System.out.println(">>> 1. Creating Account");
+            Account acc1 = new SavingsAccount(1001, "John Doe", 25, 1000.0);
+            System.out.println("Account created!");
+            printAccount(acc1);
 
-        if(account1.deposit(1000)){
-            System.out.println("Deposit of 1000 was successful");
-        }else{
-            System.out.println("Deposit fail");
+            System.out.println(">>> 2. Deposit Money");
+            acc1.deposit(500.0);
+            System.out.println("Depositing ₹500.0: SUCCESS");
+            System.out.println("New balance: ₹" + acc1.getBalance());
+
+            try {
+                acc1.deposit(-100.0);
+            } catch (Exception e) {
+                System.out.println("Depositing ₹-100.0: FAILED (" + e.getMessage() + ")");
+            }
+
+            System.out.println(">>> 3. Withdraw Money");
+            acc1.setPin(1234);
+            acc1.withdraw(200.0, 1234);
+            System.out.println("Withdrawing ₹200.0: SUCCESS");
+            System.out.println("New balance: ₹" + acc1.getBalance());
+
+            try {
+                acc1.withdraw(2000.0, 1234);
+            } catch (Exception e) {
+                System.out.println("Withdrawing ₹2000.0: FAILED (" + e.getMessage() + ")");
+            }
+
+            System.out.println("Current balance: ₹" + acc1.getBalance());
+
+            System.out.println(">>> 4. Creating Another Account");
+            Account acc2 = new CurrentAccount(1002, "Jane Smith", 30, 2000.0);
+            printAccount(acc2);
+
+            System.out.println(">>> 5. All Accounts");
+            printAccount(acc1);
+            printAccount(acc2);
+
+        } catch (Exception e) {
+            System.out.println("Unexpected test failure: " + e.getMessage());
+            e.printStackTrace();
         }
 
-        if(account2.deposit(-1000)){
-            System.out.println("Deposit of 1000 was successful");
-        }else{
-            System.out.println("Deposit fail");
-        }
+        System.out.println("==================================================");
+        System.out.println("TEST COMPLETED!");
+        System.out.println("==================================================");
+    }
 
-        // Test withdrawal
-
-        System.out.println("\nWITHDRAWAL TESTS");
-
-        if (account1.withdraw(100)) {
-            System.out.println("Withdrawal of 1000 successful.");
-        } else {
-            System.out.println("Withdrawal failed.");
-        }
-
-        // Insufficient balance
-        if (account1.withdraw(100000)) {
-            System.out.println("Withdrawal successful.");
-        } else {
-            System.out.println("Withdrawal rejected - insufficient balance.");
-        }
-
-        // Displaying details of accounts
-
-        System.out.println("\nACCOUNT INFORMATION");
-
-        System.out.println("-----------------------------");
-        System.out.println("Account Number : " + account1.getAccountNumber());
-        System.out.println("Name           : " + account1.getName());
-        System.out.println("Age            : " + account1.getAge());
-        System.out.println("Balance        : " + account1.getBalance());
-        System.out.println("Account Type   : " + account1.getAccountType());
-        System.out.println("Status         : " + account1.getStatus());
-
-        System.out.println("-----------------------------");
-        System.out.println("Account Number : " + account2.getAccountNumber());
-        System.out.println("Name           : " + account2.getName());
-        System.out.println("Age            : " + account2.getAge());
-        System.out.println("Balance        : " + account2.getBalance());
-        System.out.println("Account Type   : " + account2.getAccountType());
-        System.out.println("Status         : " + account2.getStatus());
-        System.out.println("-----------------------------");
+    private static void printAccount(Account account) {
+        System.out.println("Account #" + account.getAccountNumber() + " | " + account.getName()
+            + " (" + account.getAge() + " yrs) | " + account.getAccType() + " | ₹"
+            + account.getBalance() + " | " + account.getStatus());
     }
 }

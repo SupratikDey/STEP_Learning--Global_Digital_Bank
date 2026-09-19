@@ -1,21 +1,28 @@
 package com.gdb.domain;
 
-import com.gdb.exceptions.InactiveAccountException;
-import com.gdb.exceptions.InsufficientBalanceException;
-import com.gdb.exceptions.InvalidAmountException;
-import com.gdb.exceptions.InvalidPinException;
-import com.gdb.exceptions.MinimumBalanceViolationException;
+import com.gdb.exceptions.*;
 
-public class CurrentAccount extends Account {
+public class CurrentAccount extends AbstractAccount {
     private static final double MINIMUM_BALANCE = 1000.0;
     private static final String ACCOUNT_TYPE = "Current";
-    private static final double OVERDRAFT_LIMIT = 5000.0;
-
+    private static final double DEFAULT_OVERDRAFT_LIMIT = 5000.0;
+    private final double overdraftLimit;
     private double overdraftUsed;
 
-    public CurrentAccount(int accountNumber, String name, int age, double initialBalance) {
-        super(accountNumber, name, age, initialBalance);
-        overdraftUsed = 0.0;
+    public CurrentAccount(int accountNumber, String name, int age, double initialBalance)
+            throws IllegalArgumentException {
+        this(String.valueOf(accountNumber), name, age, initialBalance, "ACTIVE", null, DEFAULT_OVERDRAFT_LIMIT);
+    }
+
+    public CurrentAccount(String accountNumber, String name, int age, double initialBalance,
+                          String status, String pin, double overdraftLimit)
+            throws IllegalArgumentException {
+        super(accountNumber, name, age, initialBalance, ACCOUNT_TYPE, status, pin);
+        if (overdraftLimit < 0) {
+            throw new IllegalArgumentException("Overdraft limit must be non-negative");
+        }
+        this.overdraftLimit = overdraftLimit;
+        this.overdraftUsed = 0.0;
     }
 
     @Override
@@ -28,29 +35,24 @@ public class CurrentAccount extends Account {
         return ACCOUNT_TYPE;
     }
 
-    @Override
-    public void withdraw(double amount, int pin)
-            throws InvalidAmountException, InsufficientBalanceException, MinimumBalanceViolationException,
-            InactiveAccountException, InvalidPinException {
-        validateActive();
-        validateAmount(amount);
-        validatePin(pin);
-
-        double availableAmount = getBalance() + getAvailableOverdraft() - getMinimumBalance();
-        if (amount > availableAmount) {
+        @Override
+        protected void processDebit(double amount) throws AccountException {
+        double availableBalance = getBalance() + overdraftLimit - overdraftUsed;
+        if (amount > availableBalance) {
             throw new InsufficientBalanceException(
-                    "Insufficient funds. Available: ₹" + availableAmount + " (including ₹" + OVERDRAFT_LIMIT + " overdraft), Requested: ₹" + amount);
+                    "Insufficient funds. Available: ₹" + availableBalance
+                    + " (including ₹" + overdraftLimit + " overdraft), Requested: ₹" + amount);
         }
 
         double newBalance = getBalance() - amount;
         if (newBalance < getMinimumBalance()) {
-            overdraftUsed = getMinimumBalance() - newBalance;
+            overdraftUsed += getMinimumBalance() - newBalance;
         }
         setBalance(newBalance);
     }
 
     public double getOverdraftLimit() {
-        return OVERDRAFT_LIMIT;
+        return overdraftLimit;
     }
 
     public double getOverdraftUsed() {
@@ -58,7 +60,7 @@ public class CurrentAccount extends Account {
     }
 
     public double getAvailableOverdraft() {
-        return OVERDRAFT_LIMIT - overdraftUsed;
+        return overdraftLimit - overdraftUsed;
     }
 
     public boolean isUsingOverdraft() {
@@ -70,7 +72,8 @@ public class CurrentAccount extends Account {
             throw new IllegalArgumentException("Repayment amount must be positive");
         }
         if (amount > overdraftUsed) {
-            throw new IllegalArgumentException("Amount exceeds overdraft used (₹" + overdraftUsed + ")");
+            throw new IllegalArgumentException(
+                    "Amount exceeds overdraft used (₹" + overdraftUsed + ")");
         }
         overdraftUsed -= amount;
         setBalance(getBalance() + amount);
