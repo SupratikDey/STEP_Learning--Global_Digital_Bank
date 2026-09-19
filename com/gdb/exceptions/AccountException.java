@@ -1,10 +1,7 @@
-package exception;
+package com.gdb.exceptions;
 
 public class AccountException extends Exception {
-
-    
-    public AccountException(String message){
+    public AccountException(String message) {
         super(message);
     }
-    
 }
