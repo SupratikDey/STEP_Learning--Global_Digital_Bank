@@ -35,6 +35,15 @@ public class CurrentAccount extends AbstractAccount {
         return ACCOUNT_TYPE;
     }
 
+    @Override
+    public boolean canWithdraw(double amount) {
+        if (amount <= 0) {
+            return false;
+        }
+        double availableBalance = getBalance() + overdraftLimit - overdraftUsed;
+        return amount <= availableBalance;
+    }
+
         @Override
         protected void processDebit(double amount) throws AccountException {
         double availableBalance = getBalance() + overdraftLimit - overdraftUsed;

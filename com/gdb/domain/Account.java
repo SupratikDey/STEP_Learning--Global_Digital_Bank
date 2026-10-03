@@ -1,6 +1,8 @@
 package com.gdb.domain;
 
 import com.gdb.exceptions.*;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
 
 public abstract class Account {
 
@@ -17,6 +19,9 @@ public abstract class Account {
     private String status;
     private Integer pin;
     private double dailyWithdrawalTotal;
+    private int tenureYears;
+    private double dailyTransferTotal;
+    private LocalDateTime lastTransferDate;
 
     public abstract double getMinimumBalance();
 
@@ -46,6 +51,9 @@ public abstract class Account {
         this.status = "Active";
         this.pin = null;
         this.dailyWithdrawalTotal = 0.0;
+        this.tenureYears = 0;
+        this.dailyTransferTotal = 0.0;
+        this.lastTransferDate = LocalDateTime.now();
     }
 
     // ===== Business Methods =====
@@ -150,6 +158,60 @@ public abstract class Account {
 
     protected void updateDailyWithdrawalTotal(double amount) {
         this.dailyWithdrawalTotal += amount;
+    }
+
+    public int getTenureYears() {
+        return this.tenureYears;
+    }
+
+    public void setTenureYears(int tenureYears) {
+        if (tenureYears < 0) {
+            throw new IllegalArgumentException("Tenure years cannot be negative");
+        }
+        this.tenureYears = tenureYears;
+    }
+
+    public boolean canWithdraw(double amount) {
+        double currentBalance = getBalance();
+        return amount > 0 && currentBalance >= amount
+            && currentBalance - amount >= getMinimumBalance();
+    }
+
+    public double getDailyTransferTotal() {
+        return dailyTransferTotal;
+    }
+
+    public LocalDateTime getLastTransferDate() {
+        return lastTransferDate;
+    }
+
+    public double getDailyTransferLimit() {
+        return AccountRulesEngine.getInstance()
+                .getDailyTransferLimit(getAccountType(), getTenureYears());
+    }
+
+    public double getRemainingDailyTransferLimit() {
+        resetDailyTransferIfNeeded();
+        return Math.max(0.0, getDailyTransferLimit() - dailyTransferTotal);
+    }
+
+    public boolean canTransfer(double amount) {
+        resetDailyTransferIfNeeded();
+        return dailyTransferTotal + amount <= getDailyTransferLimit();
+    }
+
+    public void updateDailyTransferTotal(double amount) {
+        resetDailyTransferIfNeeded();
+        dailyTransferTotal += amount;
+        lastTransferDate = LocalDateTime.now();
+    }
+
+    public void resetDailyTransferIfNeeded() {
+        LocalDate today = LocalDate.now();
+        if (lastTransferDate == null || !lastTransferDate.toLocalDate().equals(today)) {
+            dailyTransferTotal = 0.0;
+            lastTransferDate = LocalDateTime.now();
+        }
     }
 
     public int getAccountNumber() {

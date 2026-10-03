@@ -11,8 +11,13 @@ public final class AccountRulesEngine {
 
     // Caches the loaders (not the rules), so each file is read once, on first use.
     private static final Map<String, AccountRulesPropertiesLoader> LOADERS = new HashMap<>();
+    private static final AccountRulesEngine INSTANCE = new AccountRulesEngine();
 
     private AccountRulesEngine() {
+    }
+
+    public static AccountRulesEngine getInstance() {
+        return INSTANCE;
     }
 
     // ===== Savings =====
@@ -51,6 +56,42 @@ public final class AccountRulesEngine {
         return loader(SALARY_FILE).getProperty("salary.defaultEmployer", "Unknown");
     }
 
+    public double getDailyTransferLimit(String accountType, int tenureYears) {
+        Object value = getAdditionalFeature(accountType, tenureYears, "dailyTransferLimit");
+        return value == null ? 0.0 : (Double) value;
+    }
+
+    public Object getAdditionalFeature(String accountType, int tenureYears, String featureKey) {
+        if (accountType == null || featureKey == null) {
+            return null;
+        }
+
+        String normalizedType = accountType.trim().toUpperCase().replace(' ', '_');
+
+        if ("dailyTransferLimit".equals(featureKey)) {
+            String bucket = transferBucket(tenureYears);
+            switch (normalizedType) {
+                case "SAVINGS":
+                    return readBucketedDouble(SAVINGS_FILE, "savings.dailyTransferLimit." + bucket);
+                case "CURRENT":
+                    return readBucketedDouble(CURRENT_FILE, "current.dailyTransferLimit." + bucket);
+                case "FIXED_DEPOSIT":
+                case "FIXEDDEPOSIT":
+                    return readBucketedDouble(FIXED_DEPOSIT_FILE, "fixedDeposit.dailyTransferLimit." + bucket);
+                case "SALARY":
+                    return readBucketedDouble(SALARY_FILE, "salary.dailyTransferLimit." + bucket);
+                default:
+                    return null;
+            }
+        }
+
+        if ("overdraftLimit".equals(featureKey) && "CURRENT".equals(normalizedType)) {
+            return getCurrentOverdraftLimit();
+        }
+
+        return null;
+    }
+
     // ===== Helpers =====
     private static String savingsBucket(int tenureYears) {
         switch (tenureYears) {
@@ -67,6 +108,22 @@ public final class AccountRulesEngine {
         }
     }
 
+    private static String transferBucket(int tenureYears) {
+        if (tenureYears < 0) {
+            throw new IllegalArgumentException("Unsupported tenure: " + tenureYears);
+        }
+        if (tenureYears == 0) {
+            return "new";
+        }
+        if (tenureYears <= 2) {
+            return "standard";
+        }
+        if (tenureYears <= 4) {
+            return "premium";
+        }
+        return "privilege";
+    }
+
     private static double requireDouble(String fileName, String key) {
         AccountRulesPropertiesLoader loader = loader(fileName);
         double value = loader.getDouble(key, Double.NaN);
@@ -75,6 +132,12 @@ public final class AccountRulesEngine {
                     "Missing or invalid rule '" + key + "' in " + loader.getSource());
         }
         return value;
+    }
+
+    private static Double readBucketedDouble(String fileName, String key) {
+        AccountRulesPropertiesLoader loader = loader(fileName);
+        double value = loader.getDouble(key, Double.NaN);
+        return Double.isNaN(value) ? null : value;
     }
 
     private static synchronized AccountRulesPropertiesLoader loader(String fileName) {

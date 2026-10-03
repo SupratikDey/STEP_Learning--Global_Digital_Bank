@@ -118,6 +118,11 @@ public abstract class AbstractAccount extends Account implements IAccount {
     }
 
     @Override
+    public boolean verifyPin(int pin) {
+        return accountPin != null && accountPin.equals(String.valueOf(pin));
+    }
+
+    @Override
     public void setPin(int pin) throws IllegalArgumentException {
         if (pin < 1000 || pin > 9999) {
             throw new IllegalArgumentException("PIN must be a 4-digit number");
